@@ -52,23 +52,23 @@ void getParameters() {
 
 int main(int argc, char **argv) {
 	ros::init(argc, argv, "cameraCalib");
-	getParameters();
+	getParameters(); // 获取launch文件中的参数
 
 	ifstream fin(camera_in_path);   /* 标定所用图像文件的路径 */
-	ofstream fout(result_path);    /* 保存标定结果的文件 */
+	ofstream fout(result_path);     /* 保存标定结果的文件 */
 	// 读取每一幅图像，从中提取出角点，然后对角点进行亚像素精确化
 	int image_count = 0;  /* 图像数量 */
 	Size image_size;      /* 图像的尺寸 */
-	Size board_size = Size(row_number, col_number);             /* 标定板上每行、列的角点数 */
+	Size board_size = Size(row_number, col_number);             /* 标定板上每行、列的角点数  Size(width,height) */
 	vector<Point2f> image_points_buf;         /* 缓存每幅图像上检测到的角点 */
 	vector<vector<Point2f>> image_points_seq; /* 保存检测到的所有角点 */
 	string filename;      // 图片名
 	vector<string> filenames;
-	while (getline(fin, filename) && filename.size() > 1) {
+	while (getline(fin, filename) && filename.size() > 1) { // 获取图片名字
 		++image_count;
 		filename = camera_folder_path + filename;
 		cout << filename << endl;
-		Mat imageInput = imread(filename);
+		Mat imageInput = imread(filename); // 读取图片
 		if (imageInput.empty()) {  // use the file name to search the photo
         	break;
     	}
@@ -81,13 +81,13 @@ int main(int argc, char **argv) {
 		}
 
 		/* 提取角点 */
-		if (0 == findChessboardCorners(imageInput, board_size, image_points_buf)) {
+		if (0 == findChessboardCorners(imageInput, board_size, image_points_buf)) { // 提取棋盘格角点
 			//cout << "can not find chessboard corners!\n";  // 找不到角点
 			cout << "**" << filename << "** can not find chessboard corners!\n";
 			exit(1);
 		}
 		else {
-			Mat view_gray;
+			Mat view_gray; // 保存对应的灰度图
 			cvtColor(imageInput, view_gray, cv::COLOR_RGB2GRAY);  // 转灰度图
 
 			/* 亚像素精确化 */
@@ -122,9 +122,9 @@ int main(int argc, char **argv) {
 	vector<Mat> tvecsMat;      /* 每幅图像的旋转向量 */
 	vector<Mat> rvecsMat;      /* 每幅图像的平移向量 */
 
-	/* 初始化标定板上角点的三维坐标 */
+	/* 初始化标定板上角点的三维坐标，以(0,0)坐标开始，每个角点的长宽由测量确定 */
 	int i, j, t;
-	for (t = 0; t<image_count; t++) {
+	for (t = 0; t<image_count; t++) { // 遍历所有图片数
 		vector<Point3f> tempPointSet;
 		for (i = 0; i<board_size.height; i++) {
 			for (j = 0; j<board_size.width; j++) {
@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
 
 				/* 假设标定板放在世界坐标系中z=0的平面上 */
 				realPoint.x = i * square_size.width;
-				realPoint.y = j * square_size.height;
+				realPoint.y = j * square_size.height; // 右x下y
 				realPoint.z = 0;
 				tempPointSet.push_back(realPoint);
 			}
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 	// rvecsMat 输出，旋转向量
 	// tvecsMat 输出，位移向量
 	// 0 标定时所采用的算法
-	calibrateCamera(object_points, image_points_seq, image_size, cameraMatrix, distCoeffs, rvecsMat, tvecsMat, 0);
+	calibrateCamera(object_points, image_points_seq, image_size, cameraMatrix, distCoeffs, rvecsMat, tvecsMat, 0); 
 
 	//------------------------标定完成------------------------------------
 
@@ -168,19 +168,19 @@ int main(int argc, char **argv) {
 	for (i = 0; i<image_count; i++) {
 		vector<Point3f> tempPointSet = object_points[i];
 
-		/* 通过得到的摄像机内外参数，对空间的三维点进行重新投影计算，得到新的投影点 */
+		/* 通过得到的摄像机内外参数，对假定空间的三维点进行重新投影计算，得到新的投影点，保存在image_points2中 */
 		projectPoints(tempPointSet, rvecsMat[i], tvecsMat[i], cameraMatrix, distCoeffs, image_points2);
 
 		/* 计算新的投影点和旧的投影点之间的误差*/
-		vector<Point2f> tempImagePoint = image_points_seq[i];
-		Mat tempImagePointMat = Mat(1, tempImagePoint.size(), CV_32FC2);
-		Mat image_points2Mat = Mat(1, image_points2.size(), CV_32FC2);
+		vector<Point2f> tempImagePoint = image_points_seq[i]; // 第i张图片的角点坐标
+		Mat tempImagePointMat = Mat(1, tempImagePoint.size(), CV_32FC2); // 双通道数据，每个存放Vec2f
+		Mat image_points2Mat  = Mat(1, image_points2.size(),  CV_32FC2);
 
 		for (unsigned int j = 0; j < tempImagePoint.size(); j++) {
 			image_points2Mat.at<Vec2f>(0, j) = Vec2f(image_points2[j].x, image_points2[j].y);
 			tempImagePointMat.at<Vec2f>(0, j) = Vec2f(tempImagePoint[j].x, tempImagePoint[j].y);
 		}
-		err = norm(image_points2Mat, tempImagePointMat, NORM_L2);
+		err = norm(image_points2Mat, tempImagePointMat, NORM_L2); // 计算L2距离
 		total_err += err /= point_counts[i];
 		fout << "The error of picture " << i + 1 << " is " << err << " pixel" << endl;
 	}

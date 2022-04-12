@@ -30,6 +30,7 @@ void writeTitle(const string filename, unsigned long point_num);
 void writePointCloud(const string filename, const vector<pointData> singlePCD);
 void dataSave(int index);
 
+// rosbag 遍历bag的数据，将其保存
 void loadAndSavePointcloud(int index) {
     string path = input_bag_path + int2str(index) + ".bag";
     fstream file_;
@@ -73,6 +74,7 @@ void loadAndSavePointcloud(int index) {
     vector_data.clear();
 }
 
+// 将文件头写入
 void writeTitle(const string filename, unsigned long point_num) {
     ofstream outfile(filename.c_str(), ios_base::app);
     if (!outfile) {

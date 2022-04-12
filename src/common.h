@@ -8,7 +8,10 @@
 #include <vector>
 #include <stdio.h>
 #include <Eigen/Core>
-
+#include <io.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <dirent.h>
 using namespace std;
 
 struct PnPData {
@@ -117,6 +120,7 @@ string long2str(long num) {
     }
 }
 
+// 读取txt文件，降内参矩阵展开为一个vector
 void getIntrinsic(const string path, vector<float> &intrinsic) {
     ifstream inFile;
     inFile.open(path);
@@ -126,7 +130,7 @@ void getIntrinsic(const string path, vector<float> &intrinsic) {
     }
 
     string lineStr;
-    getline(inFile, lineStr);
+    getline(inFile, lineStr); // 读取第一行，然后忽略掉
     for (uint i = 0; i < 3; ++i) {
         getline(inFile, lineStr);
         stringstream line(lineStr);
@@ -148,6 +152,7 @@ void getDistortion(const string path, vector<float> &distortion) {
         cout << "Can not open file " << path << endl; 
         exit(1);
     }
+    // 忽略前6行
     string lineStr;
     for (uint i = 0; i < 6; ++i) {
         getline(inFile, lineStr);
@@ -278,6 +283,26 @@ void getData(const string lidar_path, const string photo_path, vector<PnPData> &
     }
     inFile_lidar.close();
     inFile_photo.close();
+}
+
+// 遍历path下面的所有文件，保存在filenames里面
+void GetFileNames(string path,vector<string>& filenames)
+{
+    DIR *pDir;
+    struct dirent* ptr;
+    if(!(pDir = opendir(path.c_str()))){
+        std::cerr<<path<<"  open failed"<<std::endl;
+         return;
+    }
+    while((ptr = readdir(pDir))!=0) {
+        if (strcmp(ptr->d_name, ".") != 0 && strcmp(ptr->d_name, "..") != 0  && ptr->d_name[0]!='.')
+            filenames.push_back(path + "/" + ptr->d_name);
+    }
+    // for_each(filenames.begin(),filenames.end(),[&](auto a){
+    //     printf("%s\n",a.c_str());
+    // });
+    sort(filenames.begin(),filenames.end());
+    closedir(pDir);
 }
 
 #endif // COMMON_H

@@ -10,6 +10,40 @@ void getTheoreticalUV(float* theoryUV, const vector<float> &intrinsic, const vec
 void getUVError(const string &intrinsic_path, const string &extrinsic_path, const string &lidar_path, const string &photo_path, float* error, int threshold);
 void getUVErrorNewIntrinsic(const string &extrinsic_path, const string &lidar_path, const string &photo_path, float* error, int threshold, const vector<float> &intrinsic);
 
+// read mesured value and use theoretical U,V calculated to get the total error，如果误差太大，则mask为1，否则为0
+void getUVError(const vector<float>& intrinsic, const vector<float>& extrinsic, const vector<PnPData>& pData, float* error, int threshold, vector<int>& mask)
+{
+    mask.clear();
+
+    float errorTotalU = 0;
+    float errorTotalV = 0;
+    int count = 0;
+    for(const auto& p:pData)
+    {
+        float theoryUV[2] = {0, 0};
+        getTheoreticalUV(theoryUV, intrinsic, extrinsic, p.x, p.y, p.z);
+
+        float errorU = abs(p.u - theoryUV[0]);
+        float errorV = abs(p.v - theoryUV[1]);
+        if (errorU + errorV > threshold) {
+            cout << "Data " << " has a error bigger than the threshold" << endl;
+            cout << "xyz are " << p.x << " " << p.y << " " << p.z << endl;
+            cout << "ErrorU is " << errorU << " errorV is " << errorV << endl;
+            cout << "**********************" << endl;
+            mask.push_back(1);
+        }else
+        {
+            mask.push_back(0);
+            errorTotalU += errorU;
+            errorTotalV += errorV;
+            ++count;
+        }
+    }
+
+    error[0] = errorTotalU/count;
+    error[1] = errorTotalV/count;
+}
+
 // read mesured value and use theoretical U,V calculated to get the total error
 void getUVError(const string &intrinsic_path, const string &extrinsic_path, const string &lidar_path, const string &photo_path, float* error, int threshold) {
     ifstream inFile_lidar;
@@ -64,9 +98,11 @@ void getUVError(const string &intrinsic_path, const string &extrinsic_path, cons
                 cout << "ErrorU is " << errorU << " errorV is " << errorV << endl;
                 cout << "**********************" << endl;
             }
-            errorTotalU += errorU;
-            errorTotalV += errorV;
-            ++count;
+            else{
+                errorTotalU += errorU;
+                errorTotalV += errorV;
+                ++count;
+            }
         }
         else if(lineStr_lidar.size() < 1 && lineStr_photo.size() < 1) {  // stop reading the data when there is an empty line
             break;

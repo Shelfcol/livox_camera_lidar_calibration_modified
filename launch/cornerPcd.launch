@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <param name="pcd_folder"        value="$(find camera_lidar_calibration)/../../data/pcdFiles" />  <!-- photo to find the corner -->
+    <param name="output_path"        value="$(find camera_lidar_calibration)/../../data/corner_lidar.txt" />  <!-- file to save the photo corner -->
+    
+    <node pkg="camera_lidar_calibration" name="corner_pcd" type="corner_pcd" output="screen"></node>
+
+</launch>
+

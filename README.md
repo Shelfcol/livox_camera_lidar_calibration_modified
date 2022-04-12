@@ -1,3 +1,13 @@
+Forked from [livox_camera_lidar_calibration](https://github.com/Livox-SDK/livox_camera_lidar_calibration.git)
+
+本代码主要是对原始代码进行改进，改进的方面有：
+
+1. 图片角点和激光雷达角点提取时只需要对图片和点云进行连续鼠标点击操作，然后会自动写入文件中
+2. 激光雷达和相机不要手动提取外参，而是使用PNP求解初值，然后ceres优化求解
+3. 求解外参时进行两次优化，第二次优化时不将重投影误差大于阈值的对应点对加入优化方程
+
+本代码的讲解写了一个专栏，欢迎大家一起交流.[livox雷达和相机标定学习](https://blog.csdn.net/qq_38650944/category_11751658.html)
+
 [中文文档](doc_resources/README_cn.md)
 
 ## Camera-LiDAR-Calibration Manual

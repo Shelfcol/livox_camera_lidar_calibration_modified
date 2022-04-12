@@ -97,8 +97,8 @@ int main(int argc, char **argv) {
     vector<float> intrinsic;
     getIntrinsic(intrinsic_path, intrinsic);
     inner << intrinsic[0], intrinsic[1], intrinsic[2],
-    intrinsic[3], intrinsic[4], intrinsic[5],
-    intrinsic[6], intrinsic[7], intrinsic[8];
+            intrinsic[3], intrinsic[4], intrinsic[5],
+            intrinsic[6], intrinsic[7], intrinsic[8];
 
     // init the matrix of extrinsic, matrix of rotation and translation
     // keep this init value, or it is possible to get a local optimal result

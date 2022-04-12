@@ -4,7 +4,7 @@ project(camera_lidar_calibration)
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -53,12 +53,20 @@ target_link_libraries(cameraCalib ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_executable(pcdTransfer src/pcdTransfer.cpp src/common.h)
 target_link_libraries(pcdTransfer ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
+add_executable(corner_pcd src/corner_pcd.cpp src/common.h)
+target_link_libraries(corner_pcd ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+
 add_executable(cornerPhoto src/corner_photo.cpp src/common.h)
 target_link_libraries(cornerPhoto ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 
 add_executable(getExt1 src/cam_lid_external1.cpp src/common.h)
 target_link_libraries(getExt1 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${CERES_LIBRARIES})
+
+add_executable(getExt_modified src/cam_lid_external_modified.cpp src/common.h)
+target_link_libraries(getExt_modified ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${CERES_LIBRARIES})
+
 
 add_executable(getExt2 src/cam_lid_external2.cpp src/common.h)
 target_link_libraries(getExt2 ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${CERES_LIBRARIES})

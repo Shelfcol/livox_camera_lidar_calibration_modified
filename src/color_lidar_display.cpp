@@ -29,7 +29,7 @@ void getColor(const cv::Mat &matrinxIn, const cv::Mat &matrix_out, float x, floa
 void loadPointcloudFromROSBag(const string& bag_path);
 
 typedef pcl::PointXYZRGB PointType;
-vector<livox_ros_driver::CustomMsg> lidar_datas; 
+vector<livox_ros_driver::CustomMsg> lidar_datas;  // 多帧点云数据
 int threshold_lidar;
 string input_photo_path, input_bag_path, intrinsic_path, extrinsic_path;
 
@@ -69,7 +69,6 @@ void getUV(const cv::Mat &matrix_in, const cv::Mat &matrix_out, float x, float y
     
     UV[0] = u / depth;
     UV[1] = v / depth;
-
 }
 
 // get RGB value of the lidar point
@@ -116,7 +115,7 @@ void getParameters() {
 int main(int argc, char **argv) {
     ros::init(argc, argv, "colorLidar");
     ros::NodeHandle n;
-    getParameters();
+    getParameters(); // 读取对应图片和lidar数据，相机内参，外参
 
     cv::Mat src_img = cv::imread(input_photo_path);
     
@@ -137,15 +136,15 @@ int main(int argc, char **argv) {
     double matrix2[3][4] = {{extrinsic[0], extrinsic[1], extrinsic[2], extrinsic[3]}, {extrinsic[4], extrinsic[5], extrinsic[6], extrinsic[7]}, {extrinsic[8], extrinsic[9], extrinsic[10], extrinsic[11]}};
     
     // transform into the opencv matrix
-    cv::Mat matrix_in(3, 3, CV_64F, matrix1);
-    cv::Mat matrix_out(3, 4, CV_64F, matrix2);
+    cv::Mat matrix_in(3, 3, CV_64F, matrix1); // 内参矩阵
+    cv::Mat matrix_out(3, 4, CV_64F, matrix2); // 外参增广矩阵 [R|t]
 
 	// set intrinsic parameters of the camera
-    cv::Mat camera_matrix = cv::Mat::eye(3, 3, CV_64F);
-    camera_matrix.at<double>(0, 0) = intrinsic[0];
-    camera_matrix.at<double>(0, 2) = intrinsic[2];
-    camera_matrix.at<double>(1, 1) = intrinsic[4];
-    camera_matrix.at<double>(1, 2) = intrinsic[5];
+    cv::Mat K = cv::Mat::eye(3, 3, CV_64F);
+    K.at<double>(0, 0) = intrinsic[0];
+    K.at<double>(0, 2) = intrinsic[2];
+    K.at<double>(1, 1) = intrinsic[4];
+    K.at<double>(1, 2) = intrinsic[5];
 
 	// set radial distortion and tangential distortion
     cv::Mat distortion_coef = cv::Mat::zeros(5, 1, CV_64F);
@@ -155,16 +154,18 @@ int main(int argc, char **argv) {
     distortion_coef.at<double>(3, 0) = distortion[3];
     distortion_coef.at<double>(4, 0) = distortion[4];
 
-    // use intrinsic matrix and distortion matrix to correct the photo first
-    cv::Mat view, rview, map1, map2;
+    // use intrinsic matrix and distortion matrix to correct the photo first 去畸变
+    cv::Mat  map1, map2;
     cv::Size imageSize = src_img.size();
-    cv::initUndistortRectifyMap(camera_matrix, distortion_coef, cv::Mat(),cv::getOptimalNewCameraMatrix(camera_matrix, distortion_coef, imageSize, 1, imageSize, 0), imageSize, CV_16SC2, map1, map2);
+    cv::initUndistortRectifyMap(K, distortion_coef, cv::Mat(),cv::getOptimalNewCameraMatrix(K, distortion_coef, imageSize, 1, imageSize, 0), imageSize, CV_16SC2, map1, map2);
     cv::remap(src_img, src_img, map1, map2, cv::INTER_LINEAR);  // correct the distortion
 
-    int row = src_img.rows;
-    int col = src_img.cols;
+    int row = src_img.rows; // height
+    int col = src_img.cols; // width
     // cout << row << endl;
     // cout << col << endl << endl;
+
+    // 获取像素的RGB
     vector<vector<int>> color_vector;
     color_vector.resize(row*col);
     for (unsigned int i = 0; i < color_vector.size(); ++i) {
@@ -173,9 +174,9 @@ int main(int argc, char **argv) {
     
     // read photo and get all RGB information into color_vector
     ROS_INFO("Start to read the photo ");
-    for (int v = 0; v < row; ++v) {
-        for (int u = 0; u < col; ++u) {
-            // for .bmp photo, the 3 channels are BGR
+    for (int v = 0; v < row; ++v) { // height
+        for (int u = 0; u < col; ++u) { // width
+            // opencv图片 the 3 channels are BGR
             color_vector[v*col + u][0] = src_img.at<cv::Vec3b>(v, u)[2];
             color_vector[v*col + u][1] = src_img.at<cv::Vec3b>(v, u)[1];
             color_vector[v*col + u][2] = src_img.at<cv::Vec3b>(v, u)[0];
@@ -189,12 +190,13 @@ int main(int argc, char **argv) {
     ros::Rate loop_rate(20); // frequence 20 Hz
     
     ROS_INFO("Start to publish the point cloud");
-    uint64_t num = 0;
+    uint64_t num = 0; // 点云一帧一帧加入
     while(n.ok()) {
         ros::spinOnce();
         
         if(num < lidar_datas.size()) {
-            pcl::PointCloud<PointType>::Ptr cloud(new pcl::PointCloud<PointType>);
+
+            pcl::PointCloud<PointType>::Ptr cloud(new pcl::PointCloud<PointType>); // RGB点云
             cloud->is_dense = false;
             cloud->height = 1;
             cloud->width = lidar_datas[num].point_num; // get the point number of lidar data
@@ -216,7 +218,7 @@ int main(int argc, char **argv) {
 
                 // set the RGB for the cloud point  
                 int RGB[3] = {0, 0, 0}; 
-                getColor(matrix_in, matrix_out, x, y, z, row, col, color_vector, RGB); 
+                getColor(matrix_in, matrix_out, x, y, z, row, col, color_vector, RGB);  // 获取对应像素的RGB
                 // ignore the unexisting point
                 if (RGB[0] == 0 && RGB[1] == 0 && RGB[2] == 0) {  
                     continue;

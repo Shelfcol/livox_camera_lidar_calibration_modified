@@ -23,8 +23,8 @@ using namespace cv;
 void getColor(int &result_r, int &result_g, int &result_b, float cur_depth);
 void loadPointcloudFromROSBag(const string& bag_path);
 
-float max_depth = 60;
-float min_depth = 3;
+float max_depth = 10;
+float min_depth = 1;
 
 cv::Mat src_img;
 
@@ -32,6 +32,7 @@ vector<livox_ros_driver::CustomMsg> lidar_datas;
 int threshold_lidar;  // number of cloud point on the photo
 string input_bag_path, input_photo_path, output_path, intrinsic_path, extrinsic_path;
 
+// 加载总数30000个点
 void loadPointcloudFromROSBag(const string& bag_path) {
     ROS_INFO("Start to load the rosbag %s", bag_path.c_str());
     rosbag::Bag bag;
@@ -58,7 +59,7 @@ void loadPointcloudFromROSBag(const string& bag_path) {
 // set the color by distance to the cloud
 void getColor(int &result_r, int &result_g, int &result_b, float cur_depth) {
     float scale = (max_depth - min_depth)/10;
-    if (cur_depth < min_depth) {
+    if (cur_depth < min_depth) { // 最近的为蓝色
         result_r = 0;
         result_g = 0;
         result_b = 0xff;
@@ -93,7 +94,6 @@ void getColor(int &result_r, int &result_g, int &result_b, float cur_depth) {
         result_g = 0;
         result_b = 0xff;
     }
-
 }
 
 void getParameters() {
@@ -171,13 +171,13 @@ int main(int argc, char **argv) {
             z = lidar_datas[i].points[j].z;
 
             getTheoreticalUV(theoryUV, intrinsic, extrinsic, x, y, z);
-            int u = floor(theoryUV[0] + 0.5);
+            int u = floor(theoryUV[0] + 0.5); // 四舍五入像素值
             int v = floor(theoryUV[1] + 0.5);
             int r,g,b;
-            getColor(r, g, b, x);
+            getColor(r, g, b, x); // 根据x的值来确定RGB
 
             Point p(u, v);
-            circle(src_img, p, 1, Scalar(b, g, r), -1);
+            circle(src_img, p, 1, Scalar(b, g, r), -1); // window上画点
             ++myCount;
             if (myCount > threshold_lidar) {
                 break;
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
     }
     ROS_INFO("Show and save the picture, tap any key to close the photo");
 
-    cv::Mat view, rview, map1, map2;
+    cv::Mat  map1, map2;
     cv::Size imageSize = src_img.size();
     cv::initUndistortRectifyMap(cameraMatrix, distCoeffs, cv::Mat(),cv::getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0), imageSize, CV_16SC2, map1, map2);
     cv::remap(src_img, src_img, map1, map2, cv::INTER_LINEAR);  // correct the distortion
